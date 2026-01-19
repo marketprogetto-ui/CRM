@@ -45,10 +45,16 @@ export function UserNav() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-slate-800" />
                 <DropdownMenuGroup>
-                    <DropdownMenuItem className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer">
+                    <DropdownMenuItem
+                        className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer"
+                        onClick={() => window.location.href = '/profile'}
+                    >
                         Perfil
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer">
+                    <DropdownMenuItem
+                        className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer"
+                        onClick={() => window.location.href = '/profile'}
+                    >
                         Configurações
                     </DropdownMenuItem>
                 </DropdownMenuGroup>

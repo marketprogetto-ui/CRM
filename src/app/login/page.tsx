@@ -8,31 +8,54 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Building2, Lock, Mail, Loader2 } from 'lucide-react';
+import { Building2, Lock, Mail, Loader2, User } from 'lucide-react';
 
 export default function LoginPage() {
+    const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        if (isLogin) {
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
 
-        if (error) {
-            setError(error.message);
-            setLoading(false);
+            if (error) {
+                setError(error.message);
+                setLoading(false);
+            } else {
+                router.push('/');
+                router.refresh();
+            }
         } else {
-            router.push('/');
-            router.refresh();
+            const { error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                    },
+                },
+            });
+
+            if (error) {
+                setError(error.message);
+                setLoading(false);
+            } else {
+                alert('Cadastro realizado! Por favor, verifique seu e-mail.');
+                setIsLogin(true);
+                setLoading(false);
+            }
         }
     };
 
@@ -48,18 +71,41 @@ export default function LoginPage() {
                     <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/20">
                         <Building2 className="text-white w-7 h-7" />
                     </div>
-                    <CardTitle className="text-2xl font-bold tracking-tight text-white">Progetto CRM</CardTitle>
-                    <CardDescription className="text-slate-400">
-                        Entre com suas credenciais para acessar a plataforma
+                    <CardTitle className="text-2xl font-bold tracking-tight text-white">
+                        {isLogin ? 'Progetto CRM' : 'Criar Conta'}
+                    </CardTitle>
+                    <CardDescription className="text-slate-400 text-center">
+                        {isLogin
+                            ? 'Entre com suas credenciais para acessar a plataforma'
+                            : 'Preencha os dados abaixo para se cadastrar'}
                     </CardDescription>
                 </CardHeader>
-                <form onSubmit={handleLogin}>
+                <form onSubmit={handleAuth}>
                     <CardContent className="space-y-4">
                         {error && (
                             <Alert variant="destructive" className="bg-red-900/20 border-red-900/50 text-red-400">
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
+
+                        {!isLogin && (
+                            <div className="space-y-2">
+                                <Label htmlFor="fullName" className="text-slate-300">Nome Completo</Label>
+                                <div className="relative">
+                                    <User className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                                    <Input
+                                        id="fullName"
+                                        type="text"
+                                        placeholder="Seu nome"
+                                        className="pl-10 bg-slate-950/50 border-slate-800 text-slate-200"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                        required={!isLogin}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <Label htmlFor="email" className="text-slate-300">E-mail</Label>
                             <div className="relative">
@@ -90,7 +136,7 @@ export default function LoginPage() {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex flex-col space-y-4">
                         <Button
                             type="submit"
                             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-6 shadow-lg shadow-indigo-600/20 transition-all group"
@@ -99,8 +145,16 @@ export default function LoginPage() {
                             {loading ? (
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             ) : (
-                                'Entrar no Sistema'
+                                isLogin ? 'Entrar no Sistema' : 'Cadastrar'
                             )}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="link"
+                            className="text-slate-400 hover:text-indigo-400"
+                            onClick={() => setIsLogin(!isLogin)}
+                        >
+                            {isLogin ? 'Ainda não tem conta? Cadastre-se' : 'Já tem conta? Entre aqui'}
                         </Button>
                     </CardFooter>
                 </form>

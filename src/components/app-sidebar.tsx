@@ -50,6 +50,11 @@ const items = [
         url: '/reports',
         icon: BarChart3,
     },
+    {
+        title: 'Configurações',
+        url: '/profile',
+        icon: Settings,
+    },
 ];
 
 export function AppSidebar() {
@@ -83,8 +88,8 @@ export function AppSidebar() {
                                         asChild
                                         isActive={pathname === item.url}
                                         className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${pathname === item.url
-                                                ? 'bg-indigo-600/10 text-indigo-400 font-medium'
-                                                : 'hover:bg-slate-800/50 hover:text-slate-100'
+                                            ? 'bg-indigo-600/10 text-indigo-400 font-medium'
+                                            : 'hover:bg-slate-800/50 hover:text-slate-100'
                                             }`}
                                     >
                                         <a href={item.url}>

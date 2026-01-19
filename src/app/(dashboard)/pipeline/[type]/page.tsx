@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils-crm';
+import { NewOpportunityModal } from '@/components/crm/new-opportunity-modal';
 
 interface Stage {
     id: string;
@@ -53,6 +54,7 @@ export default function PipelinePage() {
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -143,12 +145,22 @@ export default function PipelinePage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button className="bg-indigo-600 hover:bg-indigo-500 text-white">
+                    <Button
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white"
+                        onClick={() => setIsModalOpen(true)}
+                    >
                         <Plus className="w-4 h-4 mr-2" />
                         Nova Oportunidade
                     </Button>
                 </div>
             </div>
+
+            <NewOpportunityModal
+                open={isModalOpen}
+                onOpenChange={setIsModalOpen}
+                pipelineSlug={type as string}
+                onSuccess={fetchData}
+            />
 
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="flex-1 flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
