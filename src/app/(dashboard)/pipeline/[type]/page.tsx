@@ -159,6 +159,7 @@ export default function PipelinePage() {
                 open={isModalOpen}
                 onOpenChange={setIsModalOpen}
                 pipelineSlug={type as string}
+                stages={stages}
                 onSuccess={fetchData}
             />
 

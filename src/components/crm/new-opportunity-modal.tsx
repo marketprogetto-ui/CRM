@@ -44,6 +44,7 @@ interface NewOpportunityModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     pipelineSlug: string;
+    stages: { id: string; name: string }[];
     onSuccess: () => void;
 }
 
@@ -51,10 +52,10 @@ export function NewOpportunityModal({
     open,
     onOpenChange,
     pipelineSlug,
+    stages,
     onSuccess,
 }: NewOpportunityModalProps) {
     const [loading, setLoading] = useState(false);
-    const [stages, setStages] = useState<{ id: string; name: string }[]>([]);
 
     const form = useForm<OpportunityFormValues>({
         resolver: zodResolver(opportunitySchema),
@@ -68,36 +69,14 @@ export function NewOpportunityModal({
 
     useEffect(() => {
         if (open) {
-            fetchStages();
             form.reset({
                 title: '',
                 amount_estimated: 0,
                 priority: 'medium',
-                stage_id: '',
+                stage_id: stages.length > 0 ? stages[0].id : '',
             });
         }
-    }, [open, pipelineSlug]);
-
-    const fetchStages = async () => {
-        const { data: pipelineData } = await supabase
-            .from('pipelines')
-            .select('id')
-            .eq('slug', pipelineSlug)
-            .single();
-
-        if (pipelineData) {
-            const { data: stagesData } = await supabase
-                .from('stages')
-                .select('id, name')
-                .eq('pipeline_id', pipelineData.id)
-                .order('position', { ascending: true });
-
-            setStages(stagesData || []);
-            if (stagesData && stagesData.length > 0) {
-                form.setValue('stage_id', stagesData[0].id);
-            }
-        }
-    };
+    }, [open, stages]);
 
     const onSubmit = async (values: OpportunityFormValues) => {
         setLoading(true);
@@ -197,18 +176,24 @@ export function NewOpportunityModal({
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Etapa Inicial</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={stages.length === 0}>
                                         <FormControl>
                                             <SelectTrigger className="bg-slate-950/50 border-slate-800">
-                                                <SelectValue placeholder="Selecione a etapa" />
+                                                <SelectValue placeholder={stages.length === 0 ? "Nenhuma etapa disponível" : "Selecione a etapa"} />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                                            {stages.map((stage) => (
-                                                <SelectItem key={stage.id} value={stage.id}>
-                                                    {stage.name}
-                                                </SelectItem>
-                                            ))}
+                                            {stages.length === 0 ? (
+                                                <div className="p-2 text-xs text-slate-500 text-center">
+                                                    Configure as etapas no banco de dados.
+                                                </div>
+                                            ) : (
+                                                stages.map((stage) => (
+                                                    <SelectItem key={stage.id} value={stage.id}>
+                                                        {stage.name}
+                                                    </SelectItem>
+                                                ))
+                                            )}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
