@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useState, useEffect } from 'react';
 import {
     LayoutDashboard,
     BarChart3,
@@ -12,6 +13,7 @@ import {
     LogOut,
     ChevronRight,
     Search,
+    Database,
 } from 'lucide-react';
 
 import {
@@ -51,15 +53,44 @@ const items = [
         icon: BarChart3,
     },
     {
-        title: 'Configurações',
+        title: 'Minha Conta',
         url: '/profile',
         icon: Settings,
+    },
+];
+
+const adminItems = [
+    {
+        title: 'Usuários',
+        url: '/admin/users',
+        icon: Users,
+    },
+    {
+        title: 'Logs de Auditoria',
+        url: '/admin/logs',
+        icon: Database,
     },
 ];
 
 export function AppSidebar() {
     const router = useRouter();
     const pathname = usePathname();
+    const [role, setRole] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchRole = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+                setRole(profile?.role || 'user');
+            }
+        };
+        fetchRole();
+    }, []);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -102,6 +133,33 @@ export function AppSidebar() {
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
+
+                {role === 'admin' && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel className="text-slate-500 px-4 mb-2 text-xs uppercase tracking-widest font-semibold mt-4">Administração</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {adminItems.map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            isActive={pathname === item.url}
+                                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${pathname === item.url
+                                                ? 'bg-indigo-600/10 text-indigo-400 font-medium'
+                                                : 'hover:bg-slate-800/50 hover:text-slate-100'
+                                                }`}
+                                        >
+                                            <a href={item.url}>
+                                                <item.icon className={`w-5 h-5 ${pathname === item.url ? 'text-indigo-400' : 'text-slate-400'}`} />
+                                                <span>{item.title}</span>
+                                            </a>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
             </SidebarContent>
             <SidebarFooter className="p-4 border-t border-slate-800 bg-slate-900/20">
                 <SidebarMenu>
