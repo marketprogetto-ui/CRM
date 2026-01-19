@@ -96,7 +96,7 @@ export default function BriefingForm({
     }), [initialData]);
 
     const form = useForm<BriefingFormValues>({
-        resolver: zodResolver(briefingSchema),
+        resolver: zodResolver(briefingSchema) as any,
         defaultValues: sanitizedData,
     });
 

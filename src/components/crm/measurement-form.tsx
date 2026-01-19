@@ -125,7 +125,7 @@ export default function MeasurementForm({
     }, [initialData]);
 
     const form = useForm<MeasurementFormValues>({
-        resolver: zodResolver(measurementSchema),
+        resolver: zodResolver(measurementSchema) as any,
         defaultValues: sanitizedData,
     });
 
