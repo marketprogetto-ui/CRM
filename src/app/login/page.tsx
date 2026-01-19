@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -68,7 +70,7 @@ export default function LoginPage() {
                         full_name: fullName,
                     },
                     // Define explicitamente o redirecionamento se necessário
-                    emailRedirectTo: window.location.origin
+                    emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : ''
                 },
             });
 

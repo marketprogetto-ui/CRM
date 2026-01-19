@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -109,11 +111,11 @@ export default function ProfilePage() {
     );
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
+        <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Configurações de Perfil</h1>
-                    <p className="text-slate-400">Gerencie suas informações e segurança da conta.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white">Configurações de Perfil</h1>
+                    <p className="text-slate-400 text-sm">Gerencie suas informações e segurança da conta.</p>
                 </div>
             </div>
 

@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { supabase } from '@/lib/supabase';
@@ -55,12 +57,14 @@ export default function PipelinePage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        fetchData();
+        setMounted(true);
+        fetchPipelineData();
     }, [type]);
 
-    const fetchData = async () => {
+    const fetchPipelineData = async () => {
         setLoading(true);
 
         // Fetch pipeline
@@ -128,25 +132,35 @@ export default function PipelinePage() {
         </div>
     );
 
+    const filteredOpportunities = (stageId: string) => {
+        return opportunities.filter(
+            (opp) =>
+                opp.stage_id === stageId &&
+                opp.title.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    };
+
+    if (!mounted) return null;
+
     return (
         <div className="h-full flex flex-col space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white capitalize">Pipeline {type}</h1>
-                    <p className="text-slate-400 text-sm">Gerencie suas oportunidades e acompanhe o progresso.</p>
+                    <h1 className="text-xl md:text-2xl font-bold text-white capitalize">Pipeline {type}</h1>
+                    <p className="text-slate-400 text-xs md:text-sm">Gerencie suas oportunidades e acompanhe o progresso.</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <div className="relative w-64">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                         <Input
-                            placeholder="Buscar oportunidade..."
+                            placeholder="Buscar..."
                             className="pl-10 bg-slate-900 border-slate-800 text-slate-200"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                     <Button
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white"
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white w-full sm:w-auto"
                         onClick={() => setIsModalOpen(true)}
                     >
                         <Plus className="w-4 h-4 mr-2" />
@@ -160,7 +174,7 @@ export default function PipelinePage() {
                 onOpenChange={setIsModalOpen}
                 pipelineSlug={type as string}
                 stages={stages}
-                onSuccess={fetchData}
+                onSuccess={fetchPipelineData}
             />
 
             <DragDropContext onDragEnd={onDragEnd}>
@@ -184,9 +198,7 @@ export default function PipelinePage() {
                                         ref={provided.innerRef}
                                         className="flex-1 overflow-y-auto px-3 pb-3 min-h-[150px]"
                                     >
-                                        {opportunities
-                                            .filter(o => o.stage_id === stage.id)
-                                            .filter(o => o.title.toLowerCase().includes(searchTerm.toLowerCase()))
+                                        {filteredOpportunities(stage.id)
                                             .map((opp, index) => (
                                                 <Draggable key={opp.id} draggableId={opp.id} index={index}>
                                                     {(provided) => (

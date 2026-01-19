@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -20,21 +22,38 @@ import { Button } from '@/components/ui/button';
 export default function GlobalActivitiesPage() {
     const [activities, setActivities] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [mounted, setMounted] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
+        setMounted(true);
         fetchGlobalActivities();
     }, []);
 
     const fetchGlobalActivities = async () => {
         setLoading(true);
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('activities')
-            .select('*, opportunities(title)')
-            .order('due_at', { ascending: true });
-        setActivities(data || []);
+            .select(`
+                *,
+                opportunities!inner(
+                    title,
+                    pipelines(slug)
+                ),
+                profiles(full_name)
+            `)
+            .order('due_at', { ascending: true })
+            .limit(50);
+
+        if (error) {
+            console.error('Error fetching global activities:', error);
+        } else {
+            setActivities(data || []);
+        }
         setLoading(false);
     };
+
+    if (!mounted) return null;
 
     const pending = activities.filter(a => !a.done_at);
     const completed = activities.filter(a => !!a.done_at);
@@ -44,10 +63,10 @@ export default function GlobalActivitiesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Todas as Atividades</h1>
-                    <p className="text-slate-400 text-sm">Acompanhe seus compromissos e tarefas em aberto.</p>
+                    <h1 className="text-xl md:text-2xl font-bold text-white">Todas as Atividades</h1>
+                    <p className="text-slate-400 text-xs md:text-sm">Acompanhe seus compromissos e tarefas em aberto.</p>
                 </div>
             </div>
 
@@ -121,19 +140,21 @@ function ActivityCard({ activity, onNavigate }: { activity: any, onNavigate: (id
 
     return (
         <Card className={`bg-slate-900 border-slate-800 hover:border-slate-700 transition-all ${activity.done_at ? 'opacity-60' : ''}`}>
-            <CardContent className="p-5 flex items-center justify-between">
-                <div className="flex items-center gap-5">
-                    <div className={`p-3 rounded-2xl ${isOverdue ? 'bg-red-900/20 text-red-400' : 'bg-indigo-900/20 text-indigo-400'}`}>
-                        <Calendar className="w-5 h-5" />
+            <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3 sm:gap-5">
+                    <div className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl shrink-0 ${isOverdue ? 'bg-red-900/20 text-red-400' : 'bg-indigo-900/20 text-indigo-400'}`}>
+                        <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
-                    <div>
-                        <h4 className="text-slate-100 font-bold">{activity.title}</h4>
-                        <p className="text-slate-500 text-xs mt-0.5">Oportunidade: <span className="text-slate-300 font-medium">{activity.opportunities?.title}</span></p>
-                        <div className="flex items-center gap-3 mt-2">
-                            <Badge variant="outline" className="text-[10px] font-black uppercase text-slate-500 border-slate-800">
+                    <div className="min-w-0 flex-1">
+                        <h4 className="text-slate-100 font-bold truncate text-sm sm:text-base">{activity.title}</h4>
+                        <p className="text-slate-500 text-[10px] sm:text-xs mt-0.5 truncate">
+                            Oportunidade: <span className="text-slate-300 font-medium">{activity.opportunities?.title}</span>
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2">
+                            <Badge variant="outline" className="text-[9px] sm:text-[10px] font-black uppercase text-slate-500 border-slate-800 shrink-0">
                                 {activity.type}
                             </Badge>
-                            <span className={`text-xs font-semibold ${isOverdue ? 'text-red-400' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] sm:text-xs font-semibold shrink-0 ${isOverdue ? 'text-red-400' : 'text-slate-500'}`}>
                                 {formatDate(activity.due_at)}
                             </span>
                         </div>
@@ -143,7 +164,7 @@ function ActivityCard({ activity, onNavigate }: { activity: any, onNavigate: (id
                     variant="ghost"
                     size="sm"
                     onClick={() => onNavigate(activity.opportunity_id)}
-                    className="text-indigo-400 hover:bg-indigo-600/10 gap-2"
+                    className="text-indigo-400 hover:bg-indigo-600/10 gap-2 w-full sm:w-auto text-xs"
                 >
                     Ver Detalhes <ExternalLink className="w-3.5 h-3.5" />
                 </Button>
