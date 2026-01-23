@@ -37,6 +37,7 @@ import {
     DialogDescription,
     DialogFooter
 } from '@/components/ui/dialog';
+import { inviteUser, deleteUser, updateUserRole } from '@/actions/admin-users';
 
 export default function UsersManagementPage() {
     const [users, setUsers] = useState<any[]>([]);
@@ -78,22 +79,40 @@ export default function UsersManagementPage() {
     };
 
     const handleRoleChange = async (userId: string, newRole: string) => {
-        const { error } = await supabase
-            .from('profiles')
-            .update({ role: newRole })
-            .eq('id', userId);
-
-        if (!error) fetchUsers();
+        const res = await updateUserRole(userId, newRole);
+        if (res.error) {
+            alert(res.error);
+        } else {
+            alert(res.message);
+            fetchUsers();
+        }
     };
 
     const handleInviteUser = async () => {
         setInviting(true);
-        // Em um cenário real com Supabase, o convite é feito via Auth Admin API
-        // Aqui simulamos a entrega de um link ou instrução
-        alert(`Link de convite gerado para: ${inviteEmail}\n\nNo Supabase Dashboard, use: Authentication > Users > Invite para enviar o e-mail oficial.`);
+        const res = await inviteUser(inviteEmail);
         setInviting(false);
-        setInviteModalOpen(false);
-        setInviteEmail('');
+
+        if (res.error) {
+            alert(res.error);
+        } else {
+            alert(res.message);
+            setInviteModalOpen(false);
+            setInviteEmail('');
+            fetchUsers(); // Atualiza lista caso o usuário já apareça (convidado)
+        }
+    };
+
+    const handleDeleteUser = async (userId: string) => {
+        if (!confirm('Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.')) return;
+
+        const res = await deleteUser(userId);
+        if (res.error) {
+            alert(res.error);
+        } else {
+            alert(res.message);
+            fetchUsers();
+        }
     };
 
     if (!mounted) return null;
@@ -189,7 +208,7 @@ export default function UsersManagementPage() {
                                                         Rebaixar a Colaborador
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator className="bg-slate-800" />
-                                                    <DropdownMenuItem className="text-red-400 cursor-pointer hover:bg-red-900/20">
+                                                    <DropdownMenuItem onClick={() => handleDeleteUser(user.id)} className="text-red-400 cursor-pointer hover:bg-red-900/20">
                                                         <Trash2 className="w-4 h-4 mr-2" /> Excluir Conta
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
