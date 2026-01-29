@@ -60,11 +60,11 @@ export async function middleware(request: NextRequest) {
     }
 
     const {
-        data: { session },
-    } = await supabase.auth.getSession();
+        data: { user },
+    } = await supabase.auth.getUser();
 
-    // If there is no session and the user is not on the login page, redirect to login
-    if (!session && !request.nextUrl.pathname.startsWith('/login')) {
+    // If there is no user and the user is not on the login page, redirect to login
+    if (!user && !request.nextUrl.pathname.startsWith('/login')) {
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = '/login';
         redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname);
@@ -72,7 +72,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // If there is a session and the user is on the login page, redirect to home
-    if (session && request.nextUrl.pathname.startsWith('/login')) {
+    if (user && request.nextUrl.pathname.startsWith('/login')) {
         return NextResponse.redirect(new URL('/', request.url));
     }
 
