@@ -24,7 +24,8 @@ import {
     Clock,
     User,
     DollarSign,
-    AlertCircle
+    AlertCircle,
+    FileText
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils-crm';
@@ -47,6 +48,7 @@ interface Opportunity {
     priority: string;
     owner?: { full_name: string };
     source?: string;
+    proposal_sent_at?: string;
 }
 
 export default function PipelinePage() {
@@ -117,7 +119,8 @@ export default function PipelinePage() {
             stage_id: o.stage_id,
             priority: o.priority || 'medium', // delivery might not have priority field
             owner: o.profiles || o.owner, // Adjust based on join result
-            source: o.source
+            source: o.source,
+            proposal_sent_at: o.proposal_sent_at
         }));
 
         setOpportunities(normalizedOpps);
@@ -256,7 +259,8 @@ export default function PipelinePage() {
                                                                     <span className="font-mono text-slate-300">
                                                                         {formatCurrency(opp.amount_final || opp.amount_estimated || 0)}
                                                                     </span>
-                                                                    <span className="truncate max-w-[80px]">
+                                                                    <span className="truncate max-w-[80px] flex items-center gap-1">
+                                                                        {opp.proposal_sent_at && <FileText className="w-3 h-3 text-indigo-400" />}
                                                                         {opp.owner?.full_name?.split(' ')[0]}
                                                                     </span>
                                                                 </div>
