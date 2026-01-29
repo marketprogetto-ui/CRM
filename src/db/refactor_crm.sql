@@ -40,9 +40,8 @@ ALTER TABLE proposals ADD COLUMN IF NOT EXISTS sent_at timestamptz;
 -- 4. Add proposal_sent_at to Opportunities
 ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS proposal_sent_at timestamptz;
 
--- 5. Create Storage Bucket for Proposals (User must do this in Dashboard, but we can try via SQL if extension enabled)
--- INSERT INTO storage.buckets (id, name, public) VALUES ('proposals', 'proposals', false) ON CONFLICT DO NOTHING;
--- (Usually requires specific permissions, better to instruct user)
+-- 5. Add delivery_opportunity_id to Activities
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS delivery_opportunity_id uuid REFERENCES delivery_opportunities(id);
 
 -- 6. Indexes for Performance
 CREATE INDEX IF NOT EXISTS idx_opportunities_pipeline_stage_updated ON opportunities(pipeline_id, stage_id, updated_at);
@@ -54,8 +53,24 @@ INSERT INTO pipelines (name, slug) VALUES
 ('Entrega', 'delivery')
 ON CONFLICT (slug) DO NOTHING;
 
--- 8. Upsert Stages (This needs to be handled carefully to not duplicate if IDs differ, usually matched by slug/pipeline)
--- We will assume the user runs a script or manually updates stages to match the requirement:
--- Commercial: prospecting (25%), qualification (25%), visit_measurement_proposal (25%), negotiation_closing (25%)
--- Delivery: measurement_scheduling (25%), production_transit (25%), installation (25%), completed (25%)
--- (The percentages seem to be Probability for Commercial and Progress for Delivery)
+-- 8. Storage Bucket Setup (Proposals)
+-- Create a public bucket named 'proposals'
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('proposals', 'proposals', true) 
+ON CONFLICT (id) DO NOTHING;
+
+-- Standard RLS Policies for the 'proposals' bucket
+-- Allow public read access (matches getPublicUrl usage in code)
+CREATE POLICY "Public Read Access" 
+ON storage.objects FOR SELECT 
+USING (bucket_id = 'proposals');
+
+-- Allow authenticated users to upload
+CREATE POLICY "Authenticated Upload" 
+ON storage.objects FOR INSERT 
+WITH CHECK (bucket_id = 'proposals' AND auth.role() = 'authenticated');
+
+-- Allow authenticated users to update/delete their uploads (optional foundation security)
+CREATE POLICY "Owner Delete" 
+ON storage.objects FOR DELETE 
+USING (bucket_id = 'proposals' AND auth.uid() = owner);
