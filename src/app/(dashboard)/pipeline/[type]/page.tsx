@@ -89,12 +89,38 @@ export default function PipelinePage() {
         setStages(stagesData || []);
 
         // Fetch opportunities
-        const { data: oppsData } = await supabase
-            .from('opportunities')
-            .select('*, profiles(full_name)')
-            .eq('pipeline_id', pipelineData.id);
+        let oppsData = [];
+        let query;
 
-        setOpportunities(oppsData || []);
+        if (type === 'delivery') {
+            query = supabase
+                .from('delivery_opportunities')
+                .select('*, profiles(full_name)') // assumes owner_id links to profiles
+                .eq('pipeline_id', pipelineData.id);
+        } else {
+            query = supabase
+                .from('opportunities')
+                .select('*, profiles(full_name)')
+                .eq('pipeline_id', pipelineData.id);
+        }
+
+        const { data } = await query;
+        oppsData = data || [];
+
+        // Normalize data
+        const normalizedOpps: Opportunity[] = oppsData.map((o: any) => ({
+            id: o.id,
+            title: o.title,
+            amount_estimated: o.amount_estimated || 0,
+            amount_offered: o.amount_offered || 0,
+            amount_final: o.amount_final || 0,
+            stage_id: o.stage_id,
+            priority: o.priority || 'medium', // delivery might not have priority field
+            owner: o.profiles || o.owner, // Adjust based on join result
+            source: o.source
+        }));
+
+        setOpportunities(normalizedOpps);
         setLoading(false);
     };
 
@@ -112,17 +138,14 @@ export default function PipelinePage() {
             setOpportunities(updatedOpps);
         }
 
-        // DB Update
-        const { error } = await supabase
-            .from('opportunities')
-            .update({ stage_id: destination.droppableId })
-            .eq('id', draggableId);
-
-        if (error) {
+        try {
+            await import('@/lib/actions').then(mod =>
+                mod.updateOpportunityStage(draggableId, destination.droppableId, type as string)
+            );
+        } catch (error: any) {
             console.error('Error updating stage:', error);
-            // Revert if error (optional, for brevity I'll just log and maybe show a toast)
-            // fetchInitialData(); 
-            alert(`Erro ao mover: ${error.message}`);
+            alert(`Erro ao atualizar estágio: ${error.message}`);
+            fetchPipelineData(); // Revert
         }
     };
 
@@ -143,11 +166,13 @@ export default function PipelinePage() {
     if (!mounted) return null;
 
     return (
-        <div className="h-full flex flex-col space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col h-[calc(100vh-6rem)] overflow-hidden space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
                 <div>
-                    <h1 className="text-xl md:text-2xl font-bold text-white capitalize">Pipeline {type}</h1>
-                    <p className="text-slate-400 text-xs md:text-sm">Gerencie suas oportunidades e acompanhe o progresso.</p>
+                    <h1 className="text-xl md:text-2xl font-bold text-white capitalize">Pipeline {type === 'commercial' ? 'Comercial' : 'Entrega'}</h1>
+                    <p className="text-slate-400 text-xs md:text-sm">
+                        {type === 'commercial' ? 'Gerencie vendas e negociações.' : 'Acompanhe a produção e instalação.'}
+                    </p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <div className="relative w-full sm:w-64">
@@ -178,76 +203,80 @@ export default function PipelinePage() {
             />
 
             <DragDropContext onDragEnd={onDragEnd}>
-                <div className="flex-1 flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                    {stages.map((stage) => (
-                        <div key={stage.id} className="flex-shrink-0 w-80 flex flex-col h-full bg-slate-900/40 rounded-2xl border border-slate-800/50 backdrop-blur-sm">
-                            <div className="p-4 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="font-semibold text-slate-200">{stage.name}</h3>
-                                    <Badge variant="secondary" className="bg-slate-800 text-slate-400 border-none">
-                                        {opportunities.filter(o => o.stage_id === stage.id).length}
-                                    </Badge>
-                                </div>
-                                <MoreVertical className="w-4 h-4 text-slate-600" />
-                            </div>
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 overflow-y-auto md:overflow-hidden pb-2">
+                    {stages.map((stage) => {
+                        const stageOpps = filteredOpportunities(stage.id);
+                        const totalValue = stageOpps.reduce((acc, curr) => acc + (curr.amount_final || curr.amount_estimated || 0), 0);
 
-                            <Droppable droppableId={stage.id}>
-                                {(provided) => (
-                                    <div
-                                        {...provided.droppableProps}
-                                        ref={provided.innerRef}
-                                        className="flex-1 overflow-y-auto px-3 pb-3 min-h-[150px]"
-                                    >
-                                        {filteredOpportunities(stage.id)
-                                            .map((opp, index) => (
+                        return (
+                            <div key={stage.id} className="flex flex-col h-full bg-slate-900/40 rounded-xl border border-slate-800/50 backdrop-blur-sm min-h-[300px] md:min-h-0">
+                                <div className="p-3 flex items-center justify-between border-b border-slate-800/50 bg-slate-900/60 rounded-t-xl">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-bold text-sm text-slate-200 uppercase tracking-tight">{stage.name}</h3>
+                                            <Badge className="bg-slate-800 text-slate-400 border-slate-700 text-[10px] h-5 px-1.5">
+                                                {stageOpps.length}
+                                            </Badge>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500 font-mono mt-1">{formatCurrency(totalValue)}</p>
+                                    </div>
+                                    {/* Probability Badge (simulated based on order or passed prop if available) */}
+                                    <div className={`w-2 h-2 rounded-full ${stage.slug.includes('completed') || stage.slug.includes('closed') ? 'bg-green-500' :
+                                        stage.slug.includes('negotiation') ? 'bg-orange-500' : 'bg-indigo-500'
+                                        }`} />
+                                </div>
+
+                                <Droppable droppableId={stage.id}>
+                                    {(provided) => (
+                                        <div
+                                            {...provided.droppableProps}
+                                            ref={provided.innerRef}
+                                            className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent space-y-2"
+                                        >
+                                            {stageOpps.map((opp, index) => (
                                                 <Draggable key={opp.id} draggableId={opp.id} index={index}>
                                                     {(provided) => (
                                                         <Card
                                                             ref={provided.innerRef}
                                                             {...provided.draggableProps}
                                                             {...provided.dragHandleProps}
-                                                            className="mb-3 bg-slate-800/80 border-slate-700 hover:border-indigo-500/50 transition-all cursor-grab active:cursor-grabbing group shadow-lg hover:shadow-indigo-500/5"
+                                                            className="bg-slate-800 border-slate-700/50 hover:border-indigo-500/50 shadow-sm hover:shadow-md transition-all cursor-pointer group"
                                                             onClick={() => router.push(`/opportunities/${opp.id}`)}
                                                         >
-                                                            <CardContent className="p-4 space-y-3">
-                                                                <div className="flex justify-between items-start">
-                                                                    <h4 className="font-medium text-slate-100 group-hover:text-indigo-400 transition-colors line-clamp-2">
+                                                            <CardContent className="p-3">
+                                                                <div className="flex justify-between items-start gap-2 mb-2">
+                                                                    <h4 className="font-semibold text-slate-200 text-xs leading-snug group-hover:text-indigo-400 line-clamp-2">
                                                                         {opp.title}
                                                                     </h4>
-                                                                    <Badge className={`${opp.priority === 'high' ? 'bg-red-900/30 text-red-400 border-red-900/50' :
-                                                                        opp.priority === 'medium' ? 'bg-orange-900/30 text-orange-400 border-orange-900/50' :
-                                                                            'bg-green-900/30 text-green-400 border-green-900/50'
-                                                                        } border font-medium text-[10px] uppercase tracking-wider`}>
-                                                                        {opp.priority}
-                                                                    </Badge>
+                                                                    {opp.priority && <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${opp.priority === 'high' ? 'bg-red-500' : opp.priority === 'medium' ? 'bg-orange-500' : 'bg-green-500'
+                                                                        }`} />}
                                                                 </div>
 
-                                                                <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-700/50">
-                                                                    <div className="flex items-center gap-1 text-xs text-slate-400">
-                                                                        <DollarSign className="w-3 h-3" />
-                                                                        <span className="font-semibold text-slate-200">
-                                                                            {formatCurrency(opp.amount_final || opp.amount_offered || opp.amount_estimated || 0)}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        {opp.owner && (
-                                                                            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 border border-slate-600" title={opp.owner.full_name}>
-                                                                                {opp.owner.full_name.substring(0, 1)}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
+                                                                <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                                                    <span className="font-mono text-slate-300">
+                                                                        {formatCurrency(opp.amount_final || opp.amount_estimated || 0)}
+                                                                    </span>
+                                                                    <span className="truncate max-w-[80px]">
+                                                                        {opp.owner?.full_name?.split(' ')[0]}
+                                                                    </span>
                                                                 </div>
+
+                                                                {/* Date or probability if needed */}
+                                                                {/* <div className="mt-2 h-0.5 bg-slate-700 rounded-full w-full">
+                                                                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: '25%' }} />
+                                                                </div> */}
                                                             </CardContent>
                                                         </Card>
                                                     )}
                                                 </Draggable>
                                             ))}
-                                        {provided.placeholder}
-                                    </div>
-                                )}
-                            </Droppable>
-                        </div>
-                    ))}
+                                            {provided.placeholder}
+                                        </div>
+                                    )}
+                                </Droppable>
+                            </div>
+                        );
+                    })}
                 </div>
             </DragDropContext>
         </div>

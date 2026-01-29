@@ -57,12 +57,14 @@ export interface Database {
                     created_at: string
                     updated_at: string
                     closed_at: string | null
+                    proposal_sent_at: string | null
                 }
             }
             activities: {
                 Row: {
                     id: string
-                    opportunity_id: string
+                    opportunity_id: string | null
+                    delivery_opportunity_id: string | null
                     title: string
                     description: string | null
                     type: string
@@ -80,6 +82,10 @@ export interface Database {
                     total_amount: number
                     status: string
                     created_at: string
+                    file_path: string | null
+                    file_name: string | null
+                    proposal_link: string | null
+                    sent_at: string | null
                 }
             }
             proposal_items: {
@@ -98,6 +104,36 @@ export interface Database {
                     name: string
                     description: string | null
                     base_price: number
+                }
+            }
+            delivery_opportunities: {
+                Row: {
+                    id: string
+                    commercial_opportunity_id: string
+                    title: string
+                    owner_id: string
+                    account_id: string | null
+                    primary_contact_id: string | null
+                    amount_final: number | null
+                    expected_install_at: string | null
+                    stage_id: string
+                    pipeline_id: string
+                    billing_status: string
+                    created_at: string
+                    updated_at: string
+                }
+            }
+            payment_instructions: {
+                Row: {
+                    id: string
+                    commercial_opportunity_id: string | null
+                    delivery_opportunity_id: string | null
+                    seller_amount: number
+                    supplier_amount: number
+                    installer_amount: number
+                    total_amount: number
+                    status: string
+                    created_at: string
                 }
             }
             opportunity_stage_history: {
