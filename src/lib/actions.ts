@@ -71,7 +71,7 @@ export async function updateOpportunityStage(
     // 5. Commercial -> Closed Won -> Create Delivery
     if (pipelineSlug === 'commercial') {
         if (newStage.slug === 'closed_won') {
-            await createDeliveryOpportunity(opportunity);
+            // await createDeliveryOpportunity(opportunity); // Duplicado: Trigger no banco já faz isso
         }
     }
 
