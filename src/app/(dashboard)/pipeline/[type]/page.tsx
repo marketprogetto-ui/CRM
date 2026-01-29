@@ -25,10 +25,14 @@ import {
     User,
     DollarSign,
     AlertCircle,
-    FileText
+    FileText,
+    MoreHorizontal,
+    CheckCircle2,
+    XCircle
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils-crm';
+import { updateOpportunityStage } from '@/lib/actions';
 import { NewOpportunityModal } from '@/components/crm/new-opportunity-modal';
 
 interface Stage {
@@ -150,9 +154,7 @@ export default function PipelinePage() {
         }
 
         try {
-            await import('@/lib/actions').then(mod =>
-                mod.updateOpportunityStage(draggableId, destination.droppableId, type as string)
-            );
+            await updateOpportunityStage(draggableId, destination.droppableId, type as string);
         } catch (error: any) {
             console.error('Error updating stage:', error);
             alert(`Erro ao atualizar estágio: ${error.message}`);
@@ -166,7 +168,7 @@ export default function PipelinePage() {
         </div>
     );
 
-    const filteredOpportunities = (stageId: string) => {
+    const filteredOpportunitiesResult = (stageId: string) => {
         return opportunities.filter(
             (opp) =>
                 opp.stage_id === stageId &&
@@ -174,7 +176,31 @@ export default function PipelinePage() {
         );
     };
 
+    const handleStatusChange = async (oppId: string, targetSlug: string) => {
+        const targetStage = stages.find(s => s.slug === targetSlug);
+        if (!targetStage) return;
+
+        // Optimistic remove if moving to hidden stage
+        if (targetStage.position > 4) {
+            setOpportunities(prev => prev.filter(o => o.id !== oppId));
+        }
+
+        try {
+            await updateOpportunityStage(oppId, targetStage.id, type as string);
+            // If not hidden, fetch to update UI fully? Or just trust optimistic?
+            // If hidden (won/lost), we usually want it gone.
+            if (targetStage.position <= 4) {
+                fetchPipelineData();
+            }
+        } catch (err) {
+            console.error(err);
+            fetchPipelineData();
+        }
+    };
+
     if (!mounted) return null;
+
+    const visibleStages = stages.filter(s => s.position <= 4);
 
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)] overflow-hidden space-y-4">
@@ -214,27 +240,26 @@ export default function PipelinePage() {
             />
 
             <DragDropContext onDragEnd={onDragEnd}>
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 overflow-y-auto md:overflow-hidden pb-2">
-                    {stages.map((stage) => {
-                        const stageOpps = filteredOpportunities(stage.id);
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 overflow-y-auto md:overflow-hidden pb-2 min-w-[300px] md:min-w-[1200px]">
+                    {visibleStages.map((stage) => {
+                        const stageOpps = filteredOpportunitiesResult(stage.id);
                         const totalValue = stageOpps.reduce((acc, curr) => acc + (curr.amount_final || curr.amount_estimated || 0), 0);
 
                         return (
                             <div key={stage.id} className="flex flex-col h-full bg-slate-900/40 rounded-xl border border-slate-800/50 backdrop-blur-sm min-h-[300px] md:min-h-0">
-                                <div className="p-3 flex items-center justify-between border-b border-slate-800/50 bg-slate-900/60 rounded-t-xl">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-sm text-slate-200 uppercase tracking-tight">{stage.name}</h3>
-                                            <Badge className="bg-slate-800 text-slate-400 border-slate-700 text-[10px] h-5 px-1.5">
-                                                {stageOpps.length}
-                                            </Badge>
-                                        </div>
-                                        <p className="text-[10px] text-slate-500 font-mono mt-1">{formatCurrency(totalValue)}</p>
+                                <div className="p-3 flex items-center justify-between border-b border-slate-800/50 bg-slate-900/60 rounded-t-xl sticky top-0 z-10">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-3 h-3 rounded-full ${stage.position === 1 ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' :
+                                            stage.position === 2 ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' :
+                                                stage.position === 3 ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' :
+                                                    'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                                            }`} />
+                                        <h3 className="font-bold text-sm text-slate-200 uppercase tracking-tight">{stage.name}</h3>
+                                        <Badge className="bg-slate-800 text-slate-400 border-slate-700 text-[10px] h-5 px-1.5">
+                                            {stageOpps.length}
+                                        </Badge>
                                     </div>
-                                    {/* Probability Badge (simulated based on order or passed prop if available) */}
-                                    <div className={`w-2 h-2 rounded-full ${stage.slug.includes('completed') || stage.slug.includes('closed') ? 'bg-green-500' :
-                                        stage.slug.includes('negotiation') ? 'bg-orange-500' : 'bg-indigo-500'
-                                        }`} />
+                                    <span className="text-[10px] text-slate-500 font-mono">{formatCurrency(totalValue)}</span>
                                 </div>
 
                                 <Droppable droppableId={stage.id}>
@@ -251,11 +276,44 @@ export default function PipelinePage() {
                                                             ref={provided.innerRef}
                                                             {...provided.draggableProps}
                                                             {...provided.dragHandleProps}
-                                                            className="bg-slate-800 border-slate-700/50 hover:border-indigo-500/50 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                                                            className="bg-slate-800 border-slate-700/50 hover:border-indigo-500/50 shadow-sm hover:shadow-md transition-all cursor-pointer group relative"
                                                             onClick={() => router.push(`/opportunities/${opp.id}`)}
                                                         >
                                                             <CardContent className="p-3">
-                                                                <div className="flex justify-between items-start gap-2 mb-2">
+                                                                {/* Context Menu for Status - Visible on hover/touch */}
+                                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger asChild>
+                                                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-slate-700 rounded-full" onClick={(e) => e.stopPropagation()}>
+                                                                                <MoreHorizontal className="h-4 w-4 text-slate-400" />
+                                                                            </Button>
+                                                                        </DropdownMenuTrigger>
+                                                                        <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800">
+                                                                            <DropdownMenuItem
+                                                                                className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30 cursor-pointer text-xs"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    handleStatusChange(opp.id, 'closed_won');
+                                                                                }}
+                                                                            >
+                                                                                <CheckCircle2 className="w-3 h-3 mr-2" />
+                                                                                Marcar como Ganho
+                                                                            </DropdownMenuItem>
+                                                                            <DropdownMenuItem
+                                                                                className="text-red-400 hover:text-red-300 hover:bg-red-950/30 cursor-pointer text-xs"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    handleStatusChange(opp.id, 'closed_lost');
+                                                                                }}
+                                                                            >
+                                                                                <XCircle className="w-3 h-3 mr-2" />
+                                                                                Marcar como Perdido
+                                                                            </DropdownMenuItem>
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
+                                                                </div>
+
+                                                                <div className="flex justify-between items-start gap-2 mb-2 pr-6">
                                                                     <h4 className="font-semibold text-slate-200 text-xs leading-snug group-hover:text-indigo-400 line-clamp-2">
                                                                         {opp.title}
                                                                     </h4>
@@ -272,11 +330,6 @@ export default function PipelinePage() {
                                                                         {opp.owner?.full_name?.split(' ')[0]}
                                                                     </span>
                                                                 </div>
-
-                                                                {/* Date or probability if needed */}
-                                                                {/* <div className="mt-2 h-0.5 bg-slate-700 rounded-full w-full">
-                                                                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: '25%' }} />
-                                                                </div> */}
                                                             </CardContent>
                                                         </Card>
                                                     )}
