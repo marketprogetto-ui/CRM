@@ -30,11 +30,16 @@ export default function ProposalsList({ opportunityId }: { opportunityId: string
 
     const fetchProposals = async () => {
         setLoading(true);
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('proposals')
-            .select('*, proposal_items(*, products(*))')
+            .select('*')
             .eq('opportunity_id', opportunityId)
             .order('version', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching proposals:', error);
+        }
+
         setProposals(data || []);
         setLoading(false);
     };
