@@ -48,12 +48,13 @@ export default function ReportsPage() {
             .select('*, stages(*), profiles(*)')
             .order('created_at', { ascending: false });
 
-        if (!opps) {
+        if (!opps || opps.length === 0) {
             setData({
                 forecastByStage: [],
                 forecastByOwner: [],
                 totalForecast: 0,
-                activeDeals: 0
+                activeDeals: 0,
+                timelineData: []
             });
             setLoading(false);
             return;
@@ -77,19 +78,45 @@ export default function ReportsPage() {
         });
         const ownerChart = Object.keys(forecastByOwner).map(name => ({ name, value: forecastByOwner[name] }));
 
-        // 3. New opportunities last 90 days (mock or grouped by week)
-        const last90Days = opps.filter(o => new Date(o.created_at) > new Date(Date.now() - 90 * 24 * 60 * 60 * 1000));
-        // Implementation for time series...
+        // 3. Timeline Data (Group by Week - Last 8 Weeks)
+        const timelineMap = {} as any;
+        const now = new Date();
+        for (let i = 7; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(d.getDate() - (i * 7));
+            const weekLabel = `W${getWeekNumber(d)}`;
+            timelineMap[weekLabel] = 0;
+        }
+
+        opps.forEach(o => {
+            const d = new Date(o.created_at);
+            if (d > new Date(now.getTime() - 8 * 7 * 24 * 60 * 60 * 1000)) {
+                const weekLabel = `W${getWeekNumber(d)}`;
+                if (timelineMap[weekLabel] !== undefined) {
+                    timelineMap[weekLabel] += 1; // Count opportunities
+                }
+            }
+        });
+        const timelineData = Object.keys(timelineMap).map(name => ({ name, value: timelineMap[name] }));
 
         setData({
             forecastByStage: forecastChart,
             forecastByOwner: ownerChart,
             totalForecast: forecastChart.reduce((acc, curr) => acc + curr.value, 0),
-            activeDeals: opps.length
+            activeDeals: opps.length,
+            timelineData
         });
 
         setLoading(false);
     };
+
+    function getWeekNumber(d: Date) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        var weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+        return weekNo;
+    }
 
     if (loading) return <div>Carregando Relatórios...</div>;
 
@@ -105,30 +132,30 @@ export default function ReportsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <StatsCard
                     title="Forecast Total"
-                    value={formatCurrency(data.totalForecast)}
+                    value={formatCurrency(data?.totalForecast || 0)}
                     icon={TrendingUp}
-                    trend="+12.5%"
+                    trend={data?.totalForecast > 0 ? "+0%" : "0%"}
                     color="indigo"
                 />
                 <StatsCard
                     title="Negócios Ativos"
-                    value={data.activeDeals}
+                    value={data?.activeDeals || 0}
                     icon={Target}
-                    trend="+4"
+                    trend={data?.activeDeals > 0 ? "+0" : "0"}
                     color="emerald"
                 />
                 <StatsCard
                     title="Ticket Médio"
-                    value={formatCurrency(data.totalForecast / (data.activeDeals || 1))}
+                    value={formatCurrency(data?.activeDeals ? data.totalForecast / data.activeDeals : 0)}
                     icon={Flame}
-                    trend="+R$ 1.2k"
+                    trend="R$ 0.00"
                     color="orange"
                 />
                 <StatsCard
                     title="Ciclo Médio"
-                    value="18 dias"
+                    value="0 dias" // TODO: Implement real calculation
                     icon={Timer}
-                    trend="-2 dias"
+                    trend="0 dias"
                     color="violet"
                 />
             </div>
@@ -144,7 +171,7 @@ export default function ReportsPage() {
                     </CardHeader>
                     <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={data.forecastByStage}>
+                            <BarChart data={data?.forecastByStage || []}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                                 <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
                                 <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `R$${value / 1000}k`} />
@@ -171,7 +198,7 @@ export default function ReportsPage() {
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={data.forecastByOwner}
+                                    data={data?.forecastByOwner || []}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={60}
@@ -179,7 +206,7 @@ export default function ReportsPage() {
                                     paddingAngle={8}
                                     dataKey="value"
                                 >
-                                    {data.forecastByOwner.map((entry: any, index: number) => (
+                                    {data?.forecastByOwner?.map((entry: any, index: number) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
@@ -190,7 +217,7 @@ export default function ReportsPage() {
                             </PieChart>
                         </ResponsiveContainer>
                         <div className="flex flex-col gap-2 ml-4">
-                            {data.forecastByOwner.map((entry: any, index: number) => (
+                            {data?.forecastByOwner?.map((entry: any, index: number) => (
                                 <div key={entry.name} className="flex items-center gap-2">
                                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                                     <span className="text-xs text-slate-400">{entry.name}</span>
@@ -205,13 +232,13 @@ export default function ReportsPage() {
                 <CardHeader>
                     <CardTitle className="text-white flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-indigo-400" />
-                        Influxo de Oportunidades (90 dias)
+                        Influxo de Oportunidades (8 Semanas)
                     </CardTitle>
                     <CardDescription className="text-slate-500">Volume de entrada de leads e negócios por semana.</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={mockTimelineData}>
+                        <AreaChart data={data?.timelineData || []}>
                             <defs>
                                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
@@ -257,14 +284,3 @@ function StatsCard({ title, value, icon: Icon, trend, color }: any) {
         </Card>
     );
 }
-
-const mockTimelineData = [
-    { name: 'W1', value: 12 },
-    { name: 'W2', value: 18 },
-    { name: 'W3', value: 15 },
-    { name: 'W4', value: 24 },
-    { name: 'W5', value: 20 },
-    { name: 'W6', value: 32 },
-    { name: 'W7', value: 28 },
-    { name: 'W8', value: 38 },
-];
