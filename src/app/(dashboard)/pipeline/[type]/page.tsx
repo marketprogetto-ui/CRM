@@ -69,62 +69,70 @@ export default function PipelinePage() {
     const fetchPipelineData = async () => {
         setLoading(true);
 
-        // Fetch pipeline
-        const { data: pipelineData } = await supabase
-            .from('pipelines')
-            .select('id')
-            .eq('slug', type)
-            .single();
+        try {
+            // 1. Fetch Pipeline ID
+            const { data: pipelineData, error: pipelineError } = await supabase
+                .from('pipelines')
+                .select('id')
+                .eq('slug', type)
+                .single();
 
-        if (!pipelineData) {
+            if (pipelineError || !pipelineData) {
+                console.error('Pipeline not found', pipelineError);
+                setLoading(false);
+                return;
+            }
+
+            // 2. Parallel Fetch: Stages + Opportunities (Optimized Select)
+            const commonColumns = 'id, title, amount_estimated, amount_offered, amount_final, stage_id, priority, source, proposal_sent_at, owner_id';
+
+            const stagesPromise = supabase
+                .from('stages')
+                .select('id, name, slug, position')
+                .eq('pipeline_id', pipelineData.id)
+                .order('position', { ascending: true });
+
+            let oppsPromise;
+            if (type === 'delivery') {
+                oppsPromise = supabase
+                    .from('delivery_opportunities')
+                    .select(`${commonColumns}, profiles(full_name)`)
+                    .eq('pipeline_id', pipelineData.id);
+            } else {
+                oppsPromise = supabase
+                    .from('opportunities')
+                    .select(`${commonColumns}, profiles(full_name)`)
+                    .eq('pipeline_id', pipelineData.id);
+            }
+
+            const [stagesResult, oppsResult] = await Promise.all([stagesPromise, oppsPromise]);
+
+            if (stagesResult.error) console.error('Error fetching stages', stagesResult.error);
+            if (oppsResult.error) console.error('Error fetching opportunities', oppsResult.error);
+
+            setStages(stagesResult.data || []);
+
+            // Normalize data
+            const oppsData = oppsResult.data || [];
+            const normalizedOpps: Opportunity[] = oppsData.map((o: any) => ({
+                id: o.id,
+                title: o.title,
+                amount_estimated: o.amount_estimated || 0,
+                amount_offered: o.amount_offered || 0,
+                amount_final: o.amount_final || 0,
+                stage_id: o.stage_id,
+                priority: o.priority || 'medium',
+                owner: o.profiles || o.owner,
+                source: o.source,
+                proposal_sent_at: o.proposal_sent_at
+            }));
+
+            setOpportunities(normalizedOpps);
+        } catch (err) {
+            console.error('Unexpected error loading pipeline', err);
+        } finally {
             setLoading(false);
-            return;
         }
-
-        // Fetch stages
-        const { data: stagesData } = await supabase
-            .from('stages')
-            .select('*')
-            .eq('pipeline_id', pipelineData.id)
-            .order('position', { ascending: true });
-
-        setStages(stagesData || []);
-
-        // Fetch opportunities
-        let oppsData = [];
-        let query;
-
-        if (type === 'delivery') {
-            query = supabase
-                .from('delivery_opportunities')
-                .select('*, profiles(full_name)') // assumes owner_id links to profiles
-                .eq('pipeline_id', pipelineData.id);
-        } else {
-            query = supabase
-                .from('opportunities')
-                .select('*, profiles(full_name)')
-                .eq('pipeline_id', pipelineData.id);
-        }
-
-        const { data } = await query;
-        oppsData = data || [];
-
-        // Normalize data
-        const normalizedOpps: Opportunity[] = oppsData.map((o: any) => ({
-            id: o.id,
-            title: o.title,
-            amount_estimated: o.amount_estimated || 0,
-            amount_offered: o.amount_offered || 0,
-            amount_final: o.amount_final || 0,
-            stage_id: o.stage_id,
-            priority: o.priority || 'medium', // delivery might not have priority field
-            owner: o.profiles || o.owner, // Adjust based on join result
-            source: o.source,
-            proposal_sent_at: o.proposal_sent_at
-        }));
-
-        setOpportunities(normalizedOpps);
-        setLoading(false);
     };
 
     const onDragEnd = async (result: DropResult) => {
