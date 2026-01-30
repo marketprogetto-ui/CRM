@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: CREATE USER 'LEANDRO' MANUALLY (FIXED)
+-- SCRIPT: CREATE USER 'LEANDRO' MANUALLY (FIXED V3)
 -- ==========================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -46,28 +46,27 @@ BEGIN
             ''
         );
 
-        -- Create Identity (FIXED: Added provider_id which is NOT NULL)
-        -- Usually provider_id for email provider is the user_id itself or email
+        -- Create Identity (FIXED: REMOVE EMAIL COLUMN INSERT)
+        -- 'email' in auth.identities is a GENERATED column based on identity_data->>'email', so we CANNOT insert it manually.
+        -- We insert 'identity_data' (JSONB) which contains the email, and PG generates the column value automatically.
         INSERT INTO auth.identities (
             id,
             user_id,
             identity_data,
             provider,
-            provider_id, -- REQUIRED FIELD
+            provider_id,
             last_sign_in_at,
             created_at,
-            updated_at,
-            email 
+            updated_at
         ) VALUES (
-            gen_random_uuid(), -- Identity ID is unique separate from User ID usually, but allows UUID
+            gen_random_uuid(),
             new_user_id,
             format('{"sub":"%s","email":"%s"}', new_user_id, v_email)::jsonb,
             'email',
-            new_user_id::text, -- Use User ID as provider_id for email provider consistency
+            new_user_id::text,
             now(),
             now(),
-            now(),
-            v_email
+            now()
         );
 
         -- Create Profile
