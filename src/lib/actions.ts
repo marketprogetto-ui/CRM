@@ -150,8 +150,11 @@ async function createPaymentInstruction(deliveryOpp: any) {
 export async function updateOpportunityStatus(
     opportunityId: string,
     status: 'won' | 'lost' | 'active',
-    lossReason?: string
+    lossReason?: string,
+    pipelineSlug: string = 'commercial'
 ) {
+    const tableName = pipelineSlug === 'delivery' ? 'delivery_opportunities' : 'opportunities';
+
     const updateData: any = {
         status,
         updated_at: new Date().toISOString()
@@ -166,7 +169,7 @@ export async function updateOpportunityStatus(
     }
 
     const { error } = await supabase
-        .from('opportunities')
+        .from(tableName as any)
         .update(updateData)
         .eq('id', opportunityId);
 

@@ -184,7 +184,7 @@ export default function PipelinePage() {
         setOpportunities(prev => prev.filter(o => o.id !== oppId));
 
         try {
-            await updateOpportunityStatus(oppId, status);
+            await updateOpportunityStatus(oppId, status, undefined, type as string);
             fetchPipelineData();
         } catch (err) {
             console.error(err);
