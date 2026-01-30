@@ -81,7 +81,7 @@ DO $$
 DECLARE
     sched_stage_id uuid;
 BEGIN
-    SELECT id INTO sched_stage_id FROM stages 
+    SELECT stages.id INTO sched_stage_id FROM stages 
     JOIN pipelines ON stages.pipeline_id = pipelines.id 
     WHERE pipelines.slug = 'delivery' AND stages.slug = 'scheduling' LIMIT 1;
 
