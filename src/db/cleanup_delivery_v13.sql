@@ -1,5 +1,5 @@
 -- ==========================================
--- REFACTOR V13: CLEANUP & REMOVE DELIVERY
+-- REFACTOR V13 (FIXED): CLEANUP & REMOVE DELIVERY
 -- ==========================================
 
 -- 1. DROP DELIVERY & PAYMENT TABLES
@@ -16,7 +16,15 @@ BEGIN
     SELECT id INTO del_id FROM pipelines WHERE slug = 'delivery';
     
     IF del_id IS NOT NULL THEN
+        -- SAFEGUARD: Delete any 'opportunities' improperly linked to Delivery Pipeline
+        -- (This fixes the FK constraint error preventing stage deletion)
+        DELETE FROM opportunities WHERE pipeline_id = del_id;
+        DELETE FROM opportunities WHERE stage_id IN (SELECT id FROM stages WHERE pipeline_id = del_id);
+
+        -- NOW safe to delete stages
         DELETE FROM stages WHERE pipeline_id = del_id;
+        
+        -- Finally delete the pipeline itself
         DELETE FROM pipelines WHERE id = del_id;
     END IF;
 END $$;
