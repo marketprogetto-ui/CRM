@@ -250,9 +250,9 @@ export default function PipelinePage() {
                                 <div className="p-3 flex items-center justify-between border-b border-slate-800/50 bg-slate-900/60 rounded-t-xl sticky top-0 z-10">
                                     <div className="flex items-center gap-2">
                                         <div className={`w-3 h-3 rounded-full ${stage.position === 1 ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' :
-                                            stage.position === 2 ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' :
-                                                stage.position === 3 ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' :
-                                                    'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                                                stage.position === 2 ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' :
+                                                    stage.position === 3 ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' :
+                                                        'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
                                             }`} />
                                         <h3 className="font-bold text-sm text-slate-200 uppercase tracking-tight">{stage.name}</h3>
                                         <Badge className="bg-slate-800 text-slate-400 border-slate-700 text-[10px] h-5 px-1.5">
