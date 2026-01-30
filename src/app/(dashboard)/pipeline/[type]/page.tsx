@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { formatCurrency } from '@/lib/utils-crm';
-import { updateOpportunityStage } from '@/lib/actions';
+import { updateOpportunityStage, updateOpportunityStatus } from '@/lib/actions';
 import { NewOpportunityModal } from '@/components/crm/new-opportunity-modal';
 
 interface Stage {
@@ -176,26 +176,23 @@ export default function PipelinePage() {
         );
     };
 
-    const handleStatusChange = async (oppId: string, targetSlug: string) => {
-        const targetStage = stages.find(s => s.slug === targetSlug);
-        if (!targetStage) return;
+    // Show stages only (no virtual won/lost stages anymore)
+    const visibleStages = stages.filter(s => s.position <= 4);
 
-        // Optimistic update: We invoke API but rely on fetchPipelineData to refresh state
-        // We do NOT remove it anymore, as both Won and Lost should be visible.
+    const handleStatusChange = async (oppId: string, status: 'won' | 'lost') => {
+        // Optimistic Remove (Close from board)
+        setOpportunities(prev => prev.filter(o => o.id !== oppId));
 
         try {
-            await updateOpportunityStage(oppId, targetStage.id, type as string);
+            await updateOpportunityStatus(oppId, status);
             fetchPipelineData();
         } catch (err) {
             console.error(err);
-            fetchPipelineData(); // Revert/Refresh on error
+            fetchPipelineData(); // Revert
         }
     };
 
     if (!mounted) return null;
-
-    // Show stages <= 4 OR 'closed_won' OR 'closed_lost'
-    const visibleStages = stages.filter(s => s.position <= 4 || s.slug === 'closed_won' || s.slug === 'closed_lost');
 
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)] overflow-hidden space-y-4">
@@ -288,7 +285,7 @@ export default function PipelinePage() {
                                                                                 className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30 cursor-pointer text-xs"
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
-                                                                                    handleStatusChange(opp.id, 'closed_won');
+                                                                                    handleStatusChange(opp.id, 'won');
                                                                                 }}
                                                                             >
                                                                                 <CheckCircle2 className="w-3 h-3 mr-2" />
@@ -298,7 +295,7 @@ export default function PipelinePage() {
                                                                                 className="text-red-400 hover:text-red-300 hover:bg-red-950/30 cursor-pointer text-xs"
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
-                                                                                    handleStatusChange(opp.id, 'closed_lost');
+                                                                                    handleStatusChange(opp.id, 'lost');
                                                                                 }}
                                                                             >
                                                                                 <XCircle className="w-3 h-3 mr-2" />

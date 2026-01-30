@@ -146,3 +146,29 @@ async function createPaymentInstruction(deliveryOpp: any) {
         status: 'pending'
     });
 }
+
+export async function updateOpportunityStatus(
+    opportunityId: string,
+    status: 'won' | 'lost' | 'active',
+    lossReason?: string
+) {
+    const updateData: any = {
+        status,
+        updated_at: new Date().toISOString()
+    };
+
+    if (status === 'lost' && lossReason) {
+        updateData.loss_reason = lossReason;
+    }
+
+    if (status === 'won' || status === 'lost') {
+        updateData.closed_at = new Date().toISOString();
+    }
+
+    const { error } = await supabase
+        .from('opportunities')
+        .update(updateData)
+        .eq('id', opportunityId);
+
+    if (error) throw error;
+}
