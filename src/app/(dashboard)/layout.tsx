@@ -8,6 +8,8 @@ import { UserNav } from '@/components/user-nav';
 
 import { AutoLogoutProvider } from '@/components/auto-logout-provider';
 
+import { InviteUserDialog } from '@/components/invite-user-dialog';
+
 export default function DashboardLayout({
     children,
 }: {
@@ -27,7 +29,10 @@ export default function DashboardLayout({
                                     Dashboard
                                 </h1>
                             </div>
-                            <UserNav />
+                            <div className="flex items-center gap-3">
+                                <InviteUserDialog />
+                                <UserNav />
+                            </div>
                         </header>
                         <div className="flex-1 overflow-auto p-4 md:p-6 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/5 via-transparent to-transparent">
                             {children}

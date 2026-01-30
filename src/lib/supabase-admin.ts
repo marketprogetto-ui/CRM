@@ -1,20 +1,16 @@
-
 import { createClient } from '@supabase/supabase-js';
 
-// NOTA: A chave SERVICE_ROLE é necessária para operações de admin (invite, delete, etc.)
-// Nunca exponha essa chave no lado do cliente (use apenas em arquivos no servidor ou server actions).
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// WARNING: This key has full admin access and should only be used on the server side
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || ''; // Fallback checking
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
-    // Em desenvolvimento local sem a chave, algumas funções falharão.
-    // Pode ser útil logar um aviso.
-    console.warn('Supabase Admin: Service Role Key faltando. Operações administrativas falharão.');
+if (!supabaseServiceKey) {
+    console.error('SUPABASE_SERVICE_ROLE_KEY missing. Admin operations will fail.');
 }
 
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
         autoRefreshToken: false,
-        persistSession: false,
-    },
+        persistSession: false
+    }
 });
