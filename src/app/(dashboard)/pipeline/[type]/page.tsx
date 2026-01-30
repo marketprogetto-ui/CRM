@@ -96,18 +96,10 @@ export default function PipelinePage() {
                 .eq('pipeline_id', pipelineData.id)
                 .order('position', { ascending: true });
 
-            let oppsPromise;
-            if (type === 'delivery') {
-                oppsPromise = supabase
-                    .from('delivery_opportunities')
-                    .select(`${commonColumns}, profiles(full_name)`)
-                    .eq('pipeline_id', pipelineData.id);
-            } else {
-                oppsPromise = supabase
-                    .from('opportunities')
-                    .select(`${commonColumns}, profiles(full_name)`)
-                    .eq('pipeline_id', pipelineData.id);
-            }
+            const oppsPromise = supabase
+                .from('opportunities')
+                .select(`${commonColumns}, profiles(full_name)`)
+                .eq('pipeline_id', pipelineData.id);
 
             const [stagesResult, oppsResult] = await Promise.all([stagesPromise, oppsPromise]);
 

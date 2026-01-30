@@ -92,28 +92,17 @@ export function NewOpportunityModal({
             // Pegar ID do usuário logado
             const { data: { user } } = await supabase.auth.getUser();
 
-            const tableName = pipelineSlug === 'delivery' ? 'delivery_opportunities' : 'opportunities';
-
-            const insertPayload: any = {
-                title: values.title,
-                priority: values.priority,
-                stage_id: values.stage_id,
-                pipeline_id: pipelineData.id,
-                owner_id: user?.id,
-                status: 'active'
-            };
-
-            if (pipelineSlug === 'delivery') {
-                insertPayload.amount_final = values.amount_estimated;
-                // delivery_opportunities creates manually might not have commercial_opportunity_id
-                // Ensure table allows NULL for it (it usually does or we updated schema)
-            } else {
-                insertPayload.amount_estimated = values.amount_estimated;
-            }
-
             const { error } = await supabase
-                .from(tableName as any)
-                .insert(insertPayload);
+                .from('opportunities')
+                .insert({
+                    title: values.title,
+                    amount_estimated: values.amount_estimated,
+                    priority: values.priority,
+                    stage_id: values.stage_id,
+                    pipeline_id: pipelineData.id,
+                    owner_id: user?.id,
+                    status: 'active'
+                });
 
             if (error) throw error;
 

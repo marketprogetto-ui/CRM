@@ -37,11 +37,7 @@ const items = [
         url: '/pipeline/commercial',
         icon: Layers,
     },
-    {
-        title: 'Pipeline Entrega',
-        url: '/pipeline/delivery',
-        icon: Truck,
-    },
+
     {
         title: 'Atividades',
         url: '/activities',

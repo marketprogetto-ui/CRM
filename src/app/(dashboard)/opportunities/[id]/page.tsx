@@ -70,27 +70,11 @@ export default function OpportunityDetailPage() {
     const fetchOpportunity = async () => {
         setLoading(true);
 
-        // 1. Try Commercial Opportunity
-        let { data, error } = await supabase
+        const { data, error } = await supabase
             .from('opportunities')
             .select('*, pipelines(name, slug), stages(name, position, probability), profiles(full_name)')
             .eq('id', id)
             .single();
-
-        // 2. If not found, Try Delivery Opportunity
-        if (error || !data) {
-            const { data: delData, error: delError } = await supabase
-                .from('delivery_opportunities')
-                .select('*, pipelines(name, slug), stages(name, position, probability), profiles(full_name)')
-                .eq('id', id)
-                .single();
-
-            if (!delError && delData) {
-                // Normalize Profiles relation if needed (assuming profiles(full_name) works via fix_delivery_relations.sql)
-                data = delData;
-                error = null;
-            }
-        }
 
         if (error) {
             console.error('Error fetching opportunity:', error);
