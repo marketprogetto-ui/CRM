@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: CREATE USER 'LEANDRO' MANUALLY (FIXED V3)
+-- SCRIPT: CREATE USER 'LEANDRO' MANUALLY (FIXED V4)
 -- ==========================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -46,9 +46,7 @@ BEGIN
             ''
         );
 
-        -- Create Identity (FIXED: REMOVE EMAIL COLUMN INSERT)
-        -- 'email' in auth.identities is a GENERATED column based on identity_data->>'email', so we CANNOT insert it manually.
-        -- We insert 'identity_data' (JSONB) which contains the email, and PG generates the column value automatically.
+        -- Create Identity
         INSERT INTO auth.identities (
             id,
             user_id,
@@ -69,19 +67,16 @@ BEGIN
             now()
         );
 
-        -- Create Profile
+        -- Create Profile (FIXED: Removed created_at/updated_at as they might not exist or have defaults)
+        -- Assuming minimal schema: id, full_name, role
         INSERT INTO public.profiles (
             id,
             full_name,
-            role,
-            created_at,
-            updated_at
+            role
         ) VALUES (
             new_user_id,
             'Leandro Profissional',
-            'admin', 
-            now(),
-            now()
+            'admin'
         );
 
         RAISE NOTICE 'User % created successfully with ID %', v_email, new_user_id;
