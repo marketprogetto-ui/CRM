@@ -55,8 +55,10 @@ export default function LoginPage() {
                 setMfaFactorId(verifiedFactor.id);
                 setShowMfa(true);
                 setLoading(false);
-            } else {
                 // Sem 2FA, entra direto
+                const now = Date.now().toString();
+                localStorage.setItem('last_activity', now);
+                document.cookie = `last_activity=${now}; path=/; max-age=3600; SameSite=Lax`;
                 router.push('/');
                 router.refresh();
             }
@@ -106,6 +108,9 @@ export default function LoginPage() {
             if (verifyError) throw verifyError;
 
             // Sucesso no 2FA
+            const now = Date.now().toString();
+            localStorage.setItem('last_activity', now);
+            document.cookie = `last_activity=${now}; path=/; max-age=3600; SameSite=Lax`;
             router.push('/');
             router.refresh();
         } catch (err: any) {

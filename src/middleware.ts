@@ -54,62 +54,69 @@ export async function middleware(request: NextRequest) {
         }
     );
 
-    // For automated tests navigability validation
-    if (process.env.SKIP_AUTH === 'true') {
-        return response;
-    }
-
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
-    // --- INACTIVITY CHECK (Custom Server-Side logic) ---
+    // --- ENFORCED INACTIVITY CHECK ---
     const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes
     const lastActivity = request.cookies.get('last_activity')?.value;
     const now = Date.now();
 
-    if (user && lastActivity) {
-        const lastActiveTime = parseInt(lastActivity, 10);
-        if (now - lastActiveTime > INACTIVITY_LIMIT) {
-            // Force logout: Clear session cookies and redirect
-            console.log('Middleware: Force logout due to inactivity');
+    if (user) {
+        let shouldForceLogout = false;
+
+        if (!lastActivity) {
+            // Se o usuário está logado mas NÃO tem registro de atividade recente
+            // consideramos sessão expirada (provavelmente de um dia anterior)
+            console.log('Middleware: Sessão ativa sem registro de atividade. Forçando logout.');
+            shouldForceLogout = true;
+        } else {
+            const lastActiveTime = parseInt(lastActivity, 10);
+            if (now - lastActiveTime > INACTIVITY_LIMIT) {
+                console.log('Middleware: Sessão expirada por inatividade.');
+                shouldForceLogout = true;
+            }
+        }
+
+        if (shouldForceLogout) {
+            await supabase.auth.signOut();
             const redirectUrl = request.nextUrl.clone();
             redirectUrl.pathname = '/login';
             const res = NextResponse.redirect(redirectUrl);
-
-            // Clear Supabase session cookies (best effort)
-            // usually supabase-auth-token or similar depending on version
-            // But we can just use the supabase client to signOut and let it handle the response
-            await supabase.auth.signOut();
             res.cookies.delete('last_activity');
+            // Limpa cookies do Supabase explicitamente (fallback)
+            res.cookies.getAll().forEach(cookie => {
+                if (cookie.name.includes('supabase') || cookie.name.includes('sb-')) {
+                    res.cookies.delete(cookie.name);
+                }
+            });
             return res;
         }
-    }
 
-    // Update last_activity on every valid request to the dashboard/app
-    // This keeps the session alive while the user is actively clicking
-    if (user) {
+        // Sessão válida, renova o heartbeat
         response.cookies.set('last_activity', now.toString(), {
             path: '/',
-            maxAge: 60 * 60 * 24 * 7, // 7 days survival but logic checks for 30m
-            httpOnly: false, // Accessible by client heartbeat too
+            maxAge: 3600, // 1 hora
+            httpOnly: false,
             sameSite: 'lax',
         });
     }
-    // ---------------------------------------------------
 
-    // If there is no user and the user is not on the login page, redirect to login
-    if (!user && !request.nextUrl.pathname.startsWith('/login')) {
+    // --- REDIRECIONAMENTO DE AUTH ---
+    const isLoginPage = request.nextUrl.pathname.startsWith('/login');
+
+    if (!user && !isLoginPage) {
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = '/login';
-        redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname);
         return NextResponse.redirect(redirectUrl);
     }
 
-    // If there is a session and the user is on the login page, redirect to home
-    if (user && request.nextUrl.pathname.startsWith('/login')) {
+    if (user && isLoginPage) {
         return NextResponse.redirect(new URL('/', request.url));
     }
+
+    return response;
 
     return response;
 }
