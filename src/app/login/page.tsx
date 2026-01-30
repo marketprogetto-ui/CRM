@@ -60,6 +60,7 @@ export default function LoginPage() {
                 const now = Date.now().toString();
                 localStorage.setItem('last_activity', now);
                 document.cookie = `last_activity=${now}; path=/; max-age=3600; SameSite=Lax`;
+                document.cookie = `fresh_login=true; path=/; max-age=30; SameSite=Lax`; // Short-lived flag
                 router.push('/');
                 router.refresh();
             }
@@ -112,6 +113,7 @@ export default function LoginPage() {
             const now = Date.now().toString();
             localStorage.setItem('last_activity', now);
             document.cookie = `last_activity=${now}; path=/; max-age=3600; SameSite=Lax`;
+            document.cookie = `fresh_login=true; path=/; max-age=30; SameSite=Lax`;
             router.push('/');
             router.refresh();
         } catch (err: any) {
