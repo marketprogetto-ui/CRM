@@ -60,7 +60,7 @@ BEGIN
     (comm_id, 'Medição', 'measurement', 2, 30),
     (comm_id, 'Proposta', 'proposal', 3, 60),
     (comm_id, 'Fechamento', 'closing', 4, 80),
-    (comm_id, 'Ganho', 'closed_won', 99, 100),   -- HIDDEN
+    (comm_id, 'Ganho', 'closed_won', 5, 100),   -- Visible as 5th Column
     (comm_id, 'Perdido', 'closed_lost', 98, 0);   -- HIDDEN
 
     -- Delivery Stages

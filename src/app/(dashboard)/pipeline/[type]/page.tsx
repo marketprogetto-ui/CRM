@@ -180,16 +180,17 @@ export default function PipelinePage() {
         const targetStage = stages.find(s => s.slug === targetSlug);
         if (!targetStage) return;
 
-        // Optimistic remove if moving to hidden stage
-        if (targetStage.position > 4) {
+        // Optimistic remove ONLY if moving to 'closed_lost' (hidden)
+        if (targetSlug === 'closed_lost') {
             setOpportunities(prev => prev.filter(o => o.id !== oppId));
         }
+        // If 'closed_won', we keep it visible in the validation/won column (Assuming we enable it)
 
         try {
             await updateOpportunityStage(oppId, targetStage.id, type as string);
-            // If not hidden, fetch to update UI fully? Or just trust optimistic?
-            // If hidden (won/lost), we usually want it gone.
-            if (targetStage.position <= 4) {
+
+            // Refresh logic
+            if (targetSlug !== 'closed_lost') {
                 fetchPipelineData();
             }
         } catch (err) {
@@ -200,7 +201,8 @@ export default function PipelinePage() {
 
     if (!mounted) return null;
 
-    const visibleStages = stages.filter(s => s.position <= 4);
+    // Show stages <= 4 OR 'closed_won' (Ganho)
+    const visibleStages = stages.filter(s => s.position <= 4 || s.slug === 'closed_won');
 
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)] overflow-hidden space-y-4">
@@ -250,9 +252,9 @@ export default function PipelinePage() {
                                 <div className="p-3 flex items-center justify-between border-b border-slate-800/50 bg-slate-900/60 rounded-t-xl sticky top-0 z-10">
                                     <div className="flex items-center gap-2">
                                         <div className={`w-3 h-3 rounded-full ${stage.position === 1 ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' :
-                                                stage.position === 2 ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' :
-                                                    stage.position === 3 ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' :
-                                                        'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                                            stage.position === 2 ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' :
+                                                stage.position === 3 ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]' :
+                                                    'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
                                             }`} />
                                         <h3 className="font-bold text-sm text-slate-200 uppercase tracking-tight">{stage.name}</h3>
                                         <Badge className="bg-slate-800 text-slate-400 border-slate-700 text-[10px] h-5 px-1.5">
