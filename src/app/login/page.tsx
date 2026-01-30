@@ -55,6 +55,7 @@ export default function LoginPage() {
                 setMfaFactorId(verifiedFactor.id);
                 setShowMfa(true);
                 setLoading(false);
+            } else {
                 // Sem 2FA, entra direto
                 const now = Date.now().toString();
                 localStorage.setItem('last_activity', now);
