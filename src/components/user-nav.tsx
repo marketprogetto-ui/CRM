@@ -61,7 +61,12 @@ export function UserNav() {
                 <DropdownMenuSeparator className="bg-slate-800" />
                 <DropdownMenuItem
                     className="hover:bg-red-900/20 focus:bg-red-900/20 text-red-400 cursor-pointer"
-                    onClick={() => supabase.auth.signOut()}
+                    onClick={async () => {
+                        await supabase.auth.signOut();
+                        document.cookie = "last_activity=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                        localStorage.removeItem('last_activity');
+                        window.location.href = '/login';
+                    }}
                 >
                     Sair
                 </DropdownMenuItem>

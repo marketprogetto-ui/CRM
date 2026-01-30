@@ -15,8 +15,11 @@ export function AutoLogoutProvider({ children }: { children: React.ReactNode }) 
         console.log('Auto-logout due to inactivity');
         try {
             await supabase.auth.signOut();
+            // Clear activity trackers
             localStorage.removeItem('last_activity');
+            document.cookie = "last_activity=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             router.push('/login');
+            router.refresh();
         } catch (error) {
             console.error('Error signing out:', error);
         }
@@ -28,8 +31,11 @@ export function AutoLogoutProvider({ children }: { children: React.ReactNode }) 
             clearTimeout(timerRef.current);
         }
 
+        const now = Date.now().toString();
         // Update local storage to persist activity across reloads/closes
-        localStorage.setItem('last_activity', Date.now().toString());
+        localStorage.setItem('last_activity', now);
+        // Update Cookie (for Middleware)
+        document.cookie = `last_activity=${now}; path=/; max-age=604800; SameSite=Lax`;
 
         // Set new timeout
         timerRef.current = setTimeout(handleLogout, INACTIVITY_LIMIT_MS);
