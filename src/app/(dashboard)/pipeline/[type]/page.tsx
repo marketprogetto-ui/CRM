@@ -180,29 +180,22 @@ export default function PipelinePage() {
         const targetStage = stages.find(s => s.slug === targetSlug);
         if (!targetStage) return;
 
-        // Optimistic remove ONLY if moving to 'closed_lost' (hidden)
-        if (targetSlug === 'closed_lost') {
-            setOpportunities(prev => prev.filter(o => o.id !== oppId));
-        }
-        // If 'closed_won', we keep it visible in the validation/won column (Assuming we enable it)
+        // Optimistic update: We invoke API but rely on fetchPipelineData to refresh state
+        // We do NOT remove it anymore, as both Won and Lost should be visible.
 
         try {
             await updateOpportunityStage(oppId, targetStage.id, type as string);
-
-            // Refresh logic
-            if (targetSlug !== 'closed_lost') {
-                fetchPipelineData();
-            }
+            fetchPipelineData();
         } catch (err) {
             console.error(err);
-            fetchPipelineData();
+            fetchPipelineData(); // Revert/Refresh on error
         }
     };
 
     if (!mounted) return null;
 
-    // Show stages <= 4 OR 'closed_won' (Ganho)
-    const visibleStages = stages.filter(s => s.position <= 4 || s.slug === 'closed_won');
+    // Show stages <= 4 OR 'closed_won' OR 'closed_lost'
+    const visibleStages = stages.filter(s => s.position <= 4 || s.slug === 'closed_won' || s.slug === 'closed_lost');
 
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)] overflow-hidden space-y-4">
