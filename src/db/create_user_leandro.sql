@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT: CREATE USER 'LEANDRO' MANUALLY (FIXED V4)
+-- SCRIPT: CREATE USER 'LEANDRO' MANUALLY (FIXED V5)
 -- ==========================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -14,6 +14,12 @@ BEGIN
     -- Check if user exists
     IF EXISTS (SELECT 1 FROM auth.users WHERE email = v_email) THEN
         RAISE NOTICE 'User % already exists', v_email;
+        
+        -- Optional: Ensure he is admin if he already exists
+        UPDATE public.profiles 
+        SET role = 'admin' 
+        WHERE id = (SELECT id FROM auth.users WHERE email = v_email);
+        
     ELSE
         -- Generate Hash
         v_encrypted_pw := crypt(v_password, gen_salt('bf'));
@@ -67,8 +73,8 @@ BEGIN
             now()
         );
 
-        -- Create Profile (FIXED: Removed created_at/updated_at as they might not exist or have defaults)
-        -- Assuming minimal schema: id, full_name, role
+        -- Create Profile (SAFE UPDATE)
+        -- Trigger likely created the profile already with default role
         INSERT INTO public.profiles (
             id,
             full_name,
@@ -77,7 +83,11 @@ BEGIN
             new_user_id,
             'Leandro Profissional',
             'admin'
-        );
+        )
+        ON CONFLICT (id) DO UPDATE 
+        SET 
+            full_name = EXCLUDED.full_name,
+            role = EXCLUDED.role;
 
         RAISE NOTICE 'User % created successfully with ID %', v_email, new_user_id;
     END IF;
