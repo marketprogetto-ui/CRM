@@ -11,6 +11,7 @@ BEGIN
     ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS contact_id uuid;
     ALTER TABLE delivery_opportunities ADD COLUMN IF NOT EXISTS account_id uuid;
     ALTER TABLE delivery_opportunities ADD COLUMN IF NOT EXISTS primary_contact_id uuid;
+    ALTER TABLE pipelines ADD COLUMN IF NOT EXISTS position integer;
 END $$;
 
 -- 1. ENSURE TABLES EXIST (Prevent "Relation does not exist" error)
