@@ -13,7 +13,28 @@ BEGIN
     ALTER TABLE delivery_opportunities ADD COLUMN IF NOT EXISTS primary_contact_id uuid;
 END $$;
 
--- 1. WIPE DATA (Eliminate Ghost Data)
+-- 1. ENSURE TABLES EXIST (Prevent "Relation does not exist" error)
+CREATE TABLE IF NOT EXISTS opportunity_stage_history (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    opportunity_id uuid REFERENCES opportunities(id) ON DELETE CASCADE,
+    stage_id uuid, -- We link to stages later or leniently
+    entered_at timestamptz DEFAULT now(),
+    user_id uuid REFERENCES auth.users(id)
+);
+
+CREATE TABLE IF NOT EXISTS payment_instructions (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    delivery_opportunity_id uuid REFERENCES delivery_opportunities(id) ON DELETE CASCADE,
+    commercial_opportunity_id uuid,
+    seller_amount numeric,
+    supplier_amount numeric,
+    installer_amount numeric,
+    total_amount numeric,
+    status text DEFAULT 'pending',
+    created_at timestamptz DEFAULT now()
+);
+
+-- 2. WIPE DATA (Eliminate Ghost Data)
 TRUNCATE TABLE payment_instructions CASCADE;
 TRUNCATE TABLE delivery_opportunities CASCADE;
 TRUNCATE TABLE opportunity_stage_history CASCADE;
